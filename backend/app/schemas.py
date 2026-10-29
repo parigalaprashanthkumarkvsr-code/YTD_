@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 from app.core.validators import (
+    VIDEO_ID_RE,
     validate_format_id,
     validate_youtube_resource,
 )
@@ -30,6 +31,7 @@ class DownloadRequest(BaseModel):
     format_id: str | None = Field(default=None, max_length=64)
     audio_format: AudioFormat = "mp3"
     max_height: PlaylistQuality | None = None
+    video_ids: list[str] | None = Field(default=None, max_length=200)
 
     @field_validator("url", mode="before")
     @classmethod
@@ -44,6 +46,21 @@ class DownloadRequest(BaseModel):
         if value is None:
             return None
         return validate_format_id(value)
+
+    @field_validator("video_ids")
+    @classmethod
+    def check_video_ids(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        unique: list[str] = []
+        for raw in value:
+            if not isinstance(raw, str) or not VIDEO_ID_RE.fullmatch(raw):
+                raise ValueError("One of the selected videos is invalid.")
+            if raw not in unique:
+                unique.append(raw)
+        if not unique:
+            raise ValueError("Select at least one video from the playlist.")
+        return unique
 
 
 class FormatOption(BaseModel):
@@ -64,6 +81,13 @@ class VideoInfoResponse(BaseModel):
     formats: list[FormatOption]
 
 
+class PlaylistItem(BaseModel):
+    id: str
+    title: str
+    duration: int
+    thumbnail: str | None
+
+
 class PlaylistInfoResponse(BaseModel):
     kind: Literal["playlist"] = "playlist"
     id: str
@@ -72,6 +96,7 @@ class PlaylistInfoResponse(BaseModel):
     video_count: int
     duration: int
     thumbnail: str | None
+    items: list[PlaylistItem]
 
 
 MediaInfoResponse = Annotated[

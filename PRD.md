@@ -39,7 +39,8 @@ A web app where a user pastes a YouTube URL, previews the video details, picks a
 2. As a user, I choose video quality (144p–4K where available) or audio-only.
 3. As a user, I see a progress bar with speed and ETA.
 4. As a user, I download the finished file with a clean filename.
-5. As a user, I can download an entire playlist as one ZIP (Phase 2).
+5. As a user, I can preview a playlist, choose which videos to keep, and download
+   the selected videos as one ZIP (Phase 2).
 6. As a user, I see clear errors (invalid URL, unavailable, region-blocked).
 
 ## 6. Functional Requirements
@@ -54,7 +55,7 @@ A web app where a user pastes a YouTube URL, previews the video details, picks a
 | FR-7 | Cancel a running job | P1 |
 | FR-8 | Download history (in-browser, localStorage) | P1 |
 | FR-9 | Subtitles download (SRT / VTT) | P1 |
-| FR-10 | Playlist support (whole playlist, quality cap, ZIP output) | P2 |
+| FR-10 | Playlist support (per-video selection, quality cap, ZIP output) | P2 |
 | FR-11 | Light/dark theme (both built from the Tundora + Sandal palette) | P2 |
 | FR-12 | Font-based `YTD_` wordmark logo in the header and as favicon; all UI text in monospace | P0 |
 

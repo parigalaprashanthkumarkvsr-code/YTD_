@@ -41,6 +41,7 @@ class Job:
     audio_format: str
     is_playlist: bool
     max_height: int | None
+    video_ids: list[str] | None
     directory: Path
     created_at: datetime
     status: str = "queued"
@@ -92,6 +93,7 @@ class JobManager:
         format_id: str | None,
         audio_format: str,
         max_height: int | None = None,
+        video_ids: list[str] | None = None,
     ) -> JobState:
         target = parse_youtube_url(url)
         job_id = uuid.uuid4().hex
@@ -105,6 +107,7 @@ class JobManager:
             audio_format=audio_format,
             is_playlist=target.kind == "playlist",
             max_height=max_height,
+            video_ids=video_ids,
             directory=job_dir,
             created_at=datetime.now(UTC),
         )
@@ -194,6 +197,7 @@ class JobManager:
                     job_dir=job.directory,
                     progress=playlist_progress,
                     cancel_event=job.cancel_event,
+                    video_ids=job.video_ids,
                 )
             else:
                 output = await asyncio.to_thread(
@@ -206,6 +210,10 @@ class JobManager:
                     progress=progress,
                     cancel_event=job.cancel_event,
                 )
+
+            # Progress callbacks are scheduled from the worker thread. Yield once
+            # so queued updates are applied before the terminal snapshot.
+            await asyncio.sleep(0)
 
             if job.status == "cancelled":
                 return

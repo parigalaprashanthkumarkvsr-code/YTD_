@@ -3,7 +3,7 @@
 **Document:** Technical & UX Design
 **Stack:** React (Vite + TypeScript) frontend · Python (FastAPI + yt-dlp + ffmpeg) backend
 **Brand:** Font-based `YTD_` logo · monospace type · Tundora + Sandal palette
-**Status:** Draft v1.2 (playlist extension)
+**Status:** Draft v1.3 (playlist item selection)
 **Related:** `PRD.md` (requirements) · `AGENT.md` (coding-agent instructions)
 
 > **Assumptions:** single-user / self-hosted tool, no login in v1, runs locally or in Docker.
@@ -49,7 +49,7 @@ Base path: `/api`
 |---|---|---|
 | GET | `/health` | Status + `yt-dlp` version |
 | POST | `/info` | Body `{url}` → video metadata + formats, or playlist metadata |
-| POST | `/downloads` | Body `{url, format_id?, kind, audio_format?, max_height?}` → `{job_id}` |
+| POST | `/downloads` | Body `{url, format_id?, kind, audio_format?, max_height?, video_ids?}` → `{job_id}` |
 | GET | `/downloads/{id}` | Job status snapshot |
 | GET | `/downloads/{id}/events` | SSE progress stream |
 | GET | `/downloads/{id}/file` | Download the finished file |
@@ -80,13 +80,17 @@ Base path: `/api`
   "channel": "Channel name",
   "video_count": 12,
   "duration": 5400,
-  "thumbnail": "https://..."
+  "thumbnail": "https://...",
+  "items": [
+    {"id": "dQw4w9WgXcQ", "title": "First video", "duration": 212, "thumbnail": "https://..."}
+  ]
 }
 ```
 
 Playlist downloads use `max_height` (`2160 | 1440 | 1080 | 720 | 480 | 360`;
-omit for best available) and serve one ZIP containing every available item.
-Playlist length is capped by `MAX_PLAYLIST_ITEMS` (default 50).
+omit for best available) and serve one ZIP. The optional `video_ids` array limits
+the ZIP to the selected items; omit it to include every available item. Playlist
+length is capped by `MAX_PLAYLIST_ITEMS` (default 50).
 
 **SSE event payload**
 ```json
@@ -96,8 +100,9 @@ Playlist length is capped by `MAX_PLAYLIST_ITEMS` (default 50).
 
 Playlist events add:
 ```json
-{"playlist": {"total_items": 12, "completed_items": 4, "current_item": 5, "current_title": "Lecture 05", "skipped_items": 1}}
+{"playlist": {"total_items": 7, "completed_items": 4, "current_item": 5, "current_title": "Lecture 05", "skipped_items": 1}}
 ```
+`total_items` is the number of selected videos, not the full playlist length.
 
 **Error format** (all endpoints)
 ```json
@@ -110,6 +115,12 @@ Codes: `INVALID_URL`, `VIDEO_UNAVAILABLE`, `AGE_RESTRICTED`, `REGION_BLOCKED`, `
 class InfoRequest(BaseModel):
     url: HttpUrl
 
+class PlaylistItem(BaseModel):
+    id: str
+    title: str
+    duration: int
+    thumbnail: str | None
+
 class PlaylistInfoResponse(BaseModel):
     kind: Literal["playlist"] = "playlist"
     id: str
@@ -118,6 +129,7 @@ class PlaylistInfoResponse(BaseModel):
     video_count: int
     duration: int
     thumbnail: str | None
+    items: list[PlaylistItem]
 
 class DownloadRequest(BaseModel):
     url: HttpUrl
@@ -125,6 +137,7 @@ class DownloadRequest(BaseModel):
     format_id: str | None = None
     audio_format: Literal["mp3", "m4a"] = "mp3"
     max_height: Literal[2160, 1440, 1080, 720, 480, 360] | None = None
+    video_ids: list[str] | None = None
 
 class PlaylistProgress(BaseModel):
     total_items: int
@@ -190,6 +203,7 @@ frontend/
 │  │  ├─ UrlForm.tsx
 │  │  ├─ VideoCard.tsx       # thumbnail, title, duration
 │  │  ├─ FormatPicker.tsx    # video/audio tabs + quality list
+│  │  ├─ PlaylistItemList.tsx # per-video checklist with select all/clear
 │  │  ├─ PlaylistOptions.tsx # playlist quality cap + audio tabs
 │  │  ├─ ProgressBar.tsx
 │  │  ├─ ErrorBanner.tsx
@@ -209,9 +223,14 @@ frontend/
 **Main flow (single page)**
 1. **Hero input:** large URL field + "Fetch" button; paste auto-detects.
 2. **Preview card:** thumbnail, title, channel, duration, or playlist item count.
-3. **Options:** tabs `Video | Audio`, quality radio list with file size estimates. Playlists show a quality cap and a ZIP notice.
-4. **Download button** → becomes a **progress bar** (percent, current item, speed, ETA, Cancel).
-5. **Done state:** "Save file" (or "Save ZIP") button + "Download another".
+3. **Playlist checklist:** every extracted video with thumbnail, title, duration,
+   checkbox, select all, and clear. All items start unchecked; the download
+   includes only checked items.
+4. **Options:** tabs `Video | Audio`, quality radio list with file size estimates.
+   Playlists show the selected count, a quality cap, and a ZIP notice.
+5. **Download button** → becomes a **progress bar** (percent, current item, speed,
+   ETA, Cancel).
+6. **Done state:** "Save file" (or "Save ZIP") button + "Download another".
 
 **States to design:** empty, loading (skeleton card), error (inline banner with retry), in-progress, success.
 

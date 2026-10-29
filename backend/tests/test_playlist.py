@@ -104,6 +104,11 @@ def test_extract_playlist_info_uses_flat_playlist(monkeypatch) -> None:
     assert info.video_count == 2
     assert info.duration == 300
     assert info.thumbnail == "https://img.example/one.jpg"
+    assert [item.id for item in info.items] == ["dQw4w9WgXcQ", "abc123def45"]
+    assert info.items[0].title == "First video"
+    assert info.items[0].duration == 100
+    assert info.items[0].thumbnail == "https://img.example/one.jpg"
+    assert info.items[1].thumbnail is None
     assert captured_options["extract_flat"] == "in_playlist"
     assert captured_options["noplaylist"] is False
 
@@ -183,6 +188,76 @@ def test_run_playlist_download_builds_zip(monkeypatch, tmp_path: Path) -> None:
     assert events[-1][3] == "processing"
     assert events[-1][4] == 2
     assert events[-1][5] == 2
+
+
+def test_run_playlist_download_only_downloads_selected_items(monkeypatch, tmp_path: Path) -> None:
+    downloaded: list[str] = []
+
+    def fake_run_download(**kwargs) -> Path:
+        video_id = kwargs["url"].rsplit("=", 1)[-1]
+        downloaded.append(video_id)
+        job_dir = kwargs["job_dir"]
+        job_dir.mkdir(parents=True, exist_ok=True)
+        output = job_dir / f"{video_id}.mp4"
+        output.write_bytes(b"video")
+        return output
+
+    monkeypatch.setattr(
+        ytdlp_service, "_extract_playlist_payload_sync", lambda url: playlist_payload()
+    )
+    monkeypatch.setattr(ytdlp_service, "run_download", fake_run_download)
+
+    events: list[tuple] = []
+    output = run_playlist_download(
+        url="https://www.youtube.com/playlist?list=PL1234567890",
+        kind="video",
+        audio_format="mp3",
+        max_height=None,
+        job_dir=tmp_path,
+        progress=lambda *args: events.append(args),
+        cancel_event=threading.Event(),
+        video_ids=["abc123def45"],
+    )
+
+    assert downloaded == ["abc123def45"]
+    with zipfile.ZipFile(output) as archive:
+        assert archive.namelist() == ["abc123def45.mp4"]
+    assert events[-1][4] == 1
+    assert events[-1][5] == 1
+
+
+def test_run_playlist_download_counts_missing_selection_as_skipped(
+    monkeypatch, tmp_path: Path
+) -> None:
+    def fake_run_download(**kwargs) -> Path:
+        job_dir = kwargs["job_dir"]
+        job_dir.mkdir(parents=True, exist_ok=True)
+        output = job_dir / "First video.mp4"
+        output.write_bytes(b"video")
+        return output
+
+    monkeypatch.setattr(
+        ytdlp_service, "_extract_playlist_payload_sync", lambda url: playlist_payload()
+    )
+    monkeypatch.setattr(ytdlp_service, "run_download", fake_run_download)
+
+    events: list[tuple] = []
+    output = run_playlist_download(
+        url="https://www.youtube.com/playlist?list=PL1234567890",
+        kind="video",
+        audio_format="mp3",
+        max_height=None,
+        job_dir=tmp_path,
+        progress=lambda *args: events.append(args),
+        cancel_event=threading.Event(),
+        video_ids=["dQw4w9WgXcQ", "zzzzzzzzzzz"],
+    )
+
+    with zipfile.ZipFile(output) as archive:
+        assert archive.namelist() == ["First video.mp4"]
+    assert events[-1][4] == 2
+    assert events[-1][5] == 2
+    assert events[-1][7] == 1
 
 
 def test_run_playlist_download_skips_unavailable_items(monkeypatch, tmp_path: Path) -> None:

@@ -6,6 +6,7 @@ import { FormatPicker } from "./components/FormatPicker";
 import { HistoryList } from "./components/HistoryList";
 import { LegalNotice } from "./components/LegalNotice";
 import { Logo } from "./components/Logo";
+import { PlaylistItemList } from "./components/PlaylistItemList";
 import { PlaylistOptions } from "./components/PlaylistOptions";
 import { ProgressBar } from "./components/ProgressBar";
 import { SkeletonCard } from "./components/SkeletonCard";
@@ -42,6 +43,7 @@ export default function App() {
   const [selectedFormatId, setSelectedFormatId] = useState<string | null>(null);
   const [audioFormat, setAudioFormat] = useState<AudioFormat>("mp3");
   const [quality, setQuality] = useState<PlaylistQuality | null>(1080);
+  const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
   const [lastUrl, setLastUrl] = useState<string | null>(null);
   const [formKey, setFormKey] = useState(0);
   const recordedJob = useRef<string | null>(null);
@@ -63,11 +65,13 @@ export default function App() {
     infoQuery.reset();
     setLastUrl(url);
     setSelectedFormatId(null);
+    setSelectedVideoIds([]);
     setKind("video");
     setQuality(1080);
     infoQuery.mutate(url, {
       onSuccess: (data) => {
         if (data.kind === "playlist") {
+          setSelectedVideoIds([]);
           setKind("video");
           setQuality(1080);
           return;
@@ -83,6 +87,24 @@ export default function App() {
     });
   }
 
+  function togglePlaylistVideo(videoId: string) {
+    setSelectedVideoIds((current) =>
+      current.includes(videoId)
+        ? current.filter((id) => id !== videoId)
+        : [...current, videoId],
+    );
+  }
+
+  function selectAllPlaylistVideos() {
+    if (info?.kind === "playlist") {
+      setSelectedVideoIds(info.items.map((item) => item.id));
+    }
+  }
+
+  function clearPlaylistVideos() {
+    setSelectedVideoIds([]);
+  }
+
   function handleStartDownload() {
     if (!info || !lastUrl) {
       return;
@@ -91,12 +113,16 @@ export default function App() {
       return;
     }
     if (info.kind === "playlist") {
+      if (selectedVideoIds.length === 0) {
+        return;
+      }
       void download.start({
         url: lastUrl,
         kind,
         format_id: null,
         audio_format: audioFormat,
         max_height: kind === "video" ? quality : null,
+        video_ids: selectedVideoIds,
       });
       return;
     }
@@ -113,6 +139,7 @@ export default function App() {
     infoQuery.reset();
     setLastUrl(null);
     setSelectedFormatId(null);
+    setSelectedVideoIds([]);
     setKind("video");
     setQuality(1080);
     setFormKey((value) => value + 1);
@@ -141,9 +168,11 @@ export default function App() {
             ? "best quality"
             : `${quality}p`
           : audioFormat.toUpperCase();
-      label = `${info.video_count} ${
-        info.video_count === 1 ? "video" : "videos"
-      } · ${qualityLabel}`;
+      const countLabel =
+        selectedVideoIds.length === info.video_count
+          ? `${info.video_count} ${info.video_count === 1 ? "video" : "videos"}`
+          : `${selectedVideoIds.length} of ${info.video_count} videos`;
+      label = `${countLabel} · ${qualityLabel}`;
     } else {
       const selectedVideo = info.formats.find(
         (format) => format.format_id === selectedFormatId,
@@ -164,21 +193,35 @@ export default function App() {
       filename: job.filename,
       completedAt: new Date().toISOString(),
     });
-  }, [job, info, kind, selectedFormatId, audioFormat, quality, addHistory]);
+  }, [
+    job,
+    info,
+    kind,
+    selectedFormatId,
+    selectedVideoIds,
+    audioFormat,
+    quality,
+    addHistory,
+  ]);
 
   const selectedVideo =
     info?.kind === "video"
       ? info.formats.find((format) => format.format_id === selectedFormatId)
       : undefined;
+  const selectedCount = selectedVideoIds.length;
   const playlistItems =
     info?.kind === "playlist"
-      ? `${info.video_count} ${info.video_count === 1 ? "video" : "videos"}`
+      ? selectedCount === info.video_count
+        ? `${info.video_count} ${info.video_count === 1 ? "video" : "videos"}`
+        : `${selectedCount} of ${info.video_count} videos`
       : "playlist";
   const actionLabel =
     info?.kind === "playlist"
-      ? kind === "video"
-        ? `download ${playlistItems} · ${quality === null ? "best" : `${quality}p`}`
-        : `download ${playlistItems} · ${audioFormat.toUpperCase()}`
+      ? selectedCount === 0
+        ? "select videos to download"
+        : kind === "video"
+          ? `download ${playlistItems} · ${quality === null ? "best" : `${quality}p`}`
+          : `download ${playlistItems} · ${audioFormat.toUpperCase()}`
       : kind === "video"
         ? `download ${selectedVideo?.label ?? "video"}`
         : `download ${audioFormat.toUpperCase()}`;
@@ -229,15 +272,24 @@ export default function App() {
                     onAudioFormatChange={setAudioFormat}
                   />
                 ) : (
-                  <PlaylistOptions
-                    kind={kind}
-                    onKindChange={setKind}
-                    quality={quality}
-                    onQualityChange={setQuality}
-                    audioFormat={audioFormat}
-                    onAudioFormatChange={setAudioFormat}
-                    videoCount={info.video_count}
-                  />
+                  <>
+                    <PlaylistItemList
+                      items={info.items}
+                      selectedIds={selectedVideoIds}
+                      onToggle={togglePlaylistVideo}
+                      onSelectAll={selectAllPlaylistVideos}
+                      onClear={clearPlaylistVideos}
+                    />
+                    <PlaylistOptions
+                      kind={kind}
+                      onKindChange={setKind}
+                      quality={quality}
+                      onQualityChange={setQuality}
+                      audioFormat={audioFormat}
+                      onAudioFormatChange={setAudioFormat}
+                      selectedCount={selectedCount}
+                    />
+                  </>
                 )}
 
                 {!job ? (
@@ -246,6 +298,7 @@ export default function App() {
                     onClick={handleStartDownload}
                     disabled={
                       starting ||
+                      (info.kind === "playlist" && selectedCount === 0) ||
                       (info.kind === "video" &&
                         kind === "video" &&
                         !selectedFormatId)

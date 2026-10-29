@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 from app.api import info as info_api
 from app.core.errors import DownloadCancelledError, VideoUnavailableError
-from app.schemas import FormatOption, PlaylistInfoResponse, VideoInfoResponse
+from app.schemas import (
+    FormatOption,
+    PlaylistInfoResponse,
+    PlaylistItem,
+    VideoInfoResponse,
+)
 from app.services import job_manager as job_manager_module
 from app.services.job_manager import manager
 
@@ -45,6 +50,20 @@ def sample_playlist() -> PlaylistInfoResponse:
         video_count=2,
         duration=424,
         thumbnail="https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+        items=[
+            PlaylistItem(
+                id="dQw4w9WgXcQ",
+                title="First video",
+                duration=212,
+                thumbnail="https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+            ),
+            PlaylistItem(
+                id="abc123def45",
+                title="Second video",
+                duration=212,
+                thumbnail=None,
+            ),
+        ],
     )
 
 
@@ -92,6 +111,13 @@ async def test_info_returns_playlist_and_canonicalises_url(client, monkeypatch) 
     payload = response.json()
     assert payload["kind"] == "playlist"
     assert payload["video_count"] == 2
+    assert payload["items"][0] == {
+        "id": "dQw4w9WgXcQ",
+        "title": "First video",
+        "duration": 212,
+        "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+    }
+    assert payload["items"][1]["id"] == "abc123def45"
     assert captured == ["https://www.youtube.com/playlist?list=PL1234567890"]
 
 
@@ -190,12 +216,14 @@ async def test_playlist_download_lifecycle(client, monkeypatch) -> None:
         kind: str,
         audio_format: str,
         max_height: int | None,
+        video_ids: list[str] | None,
         job_dir: Path,
         progress,
         cancel_event: threading.Event,
     ) -> Path:
         assert url == "https://www.youtube.com/playlist?list=PL1234567890"
         assert max_height == 1080
+        assert video_ids == ["dQw4w9WgXcQ", "abc123def45"]
         progress(10.0, "2.0MiB/s", 30, "downloading", 1, 2, "First video", 0)
         progress(55.0, None, None, "processing", 2, 2, "Second video", 0)
         output = job_dir / "Sample playlist [PL1234567890].zip"
@@ -210,6 +238,7 @@ async def test_playlist_download_lifecycle(client, monkeypatch) -> None:
             "url": "https://youtube.com/playlist?list=PL1234567890",
             "kind": "video",
             "max_height": 1080,
+            "video_ids": ["dQw4w9WgXcQ", "abc123def45"],
         },
     )
     assert response.status_code == 202
@@ -240,6 +269,20 @@ async def test_download_rejects_invalid_playlist_quality(client) -> None:
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "INTERNAL"
+
+
+async def test_download_rejects_empty_or_invalid_playlist_selection(client) -> None:
+    for video_ids in ([], ["not a video id!"]):
+        response = await client.post(
+            "/api/downloads",
+            json={
+                "url": "https://youtube.com/playlist?list=PL1234567890",
+                "kind": "video",
+                "video_ids": video_ids,
+            },
+        )
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "INTERNAL"
 
 
 async def test_download_reports_failure_and_cleans_files(client, monkeypatch) -> None:

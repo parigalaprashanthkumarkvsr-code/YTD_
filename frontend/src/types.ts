@@ -28,6 +28,13 @@ export interface VideoInfo {
   formats: VideoFormat[];
 }
 
+export interface PlaylistItem {
+  id: string;
+  title: string;
+  duration: number;
+  thumbnail: string | null;
+}
+
 export interface PlaylistInfo {
   kind: "playlist";
   id: string;
@@ -36,6 +43,7 @@ export interface PlaylistInfo {
   video_count: number;
   duration: number;
   thumbnail: string | null;
+  items: PlaylistItem[];
 }
 
 export type MediaInfo = VideoInfo | PlaylistInfo;
@@ -66,6 +74,7 @@ export interface DownloadPayload {
   format_id: string | null;
   audio_format: AudioFormat;
   max_height?: PlaylistQuality | null;
+  video_ids?: string[] | null;
 }
 
 export interface DownloadAccepted {

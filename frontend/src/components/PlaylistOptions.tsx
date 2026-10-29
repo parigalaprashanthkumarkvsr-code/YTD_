@@ -7,7 +7,7 @@ interface PlaylistOptionsProps {
   onQualityChange: (quality: PlaylistQuality | null) => void;
   audioFormat: AudioFormat;
   onAudioFormatChange: (format: AudioFormat) => void;
-  videoCount: number;
+  selectedCount: number;
 }
 
 interface OptionCardProps {
@@ -99,13 +99,16 @@ export function PlaylistOptions({
   onQualityChange,
   audioFormat,
   onAudioFormatChange,
-  videoCount,
+  selectedCount,
 }: PlaylistOptionsProps) {
   return (
     <section aria-label="Playlist download options" className="space-y-4">
       <p className="text-label text-muted">
-        {videoCount} {videoCount === 1 ? "video" : "videos"} · the finished files are
-        bundled into one ZIP
+        {selectedCount === 0
+          ? "select at least one video above · the finished files are bundled into one ZIP"
+          : `${selectedCount} ${
+              selectedCount === 1 ? "video" : "videos"
+            } selected · the finished files are bundled into one ZIP`}
       </p>
 
       <div

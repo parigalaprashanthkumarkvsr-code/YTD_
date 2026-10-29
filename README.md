@@ -21,8 +21,10 @@ Sandal palette, JetBrains Mono, and a font-based `YTD_` wordmark.
 - Metadata preview: title, channel, duration, thumbnail, formats
 - Video quality picker with file-size estimates; MP4 merge via ffmpeg
 - Audio extraction to MP3 (192 kbps) or M4A
-- Playlist downloads (up to `MAX_PLAYLIST_ITEMS`, default 50) bundled into one
-  ZIP, with a quality cap applied to every item
+- Playlist preview lists every video with its title, thumbnail, and duration
+- Per-video selection: check only the items you want, with select-all and clear
+  controls, then download the checked videos (up to `MAX_PLAYLIST_ITEMS`,
+  default 50) as one ZIP with a quality cap applied to every item
 - Live progress with current playlist item, speed, ETA, and cancel
 - Finished-file serving with safe filenames and automatic TTL cleanup
 - In-browser download history (`localStorage`)
@@ -34,15 +36,18 @@ Sandal palette, JetBrains Mono, and a font-based `YTD_` wordmark.
 
 1. Paste a YouTube video or playlist URL and click **Fetch**.
 2. Check the preview. Video links show title, channel, duration, and formats;
-   playlist links show the video count.
-3. Choose **Video** and a quality, or **Audio** and MP3/M4A.
-4. Click **Download** and follow the progress bar. Use **Cancel** to stop.
-5. When it finishes, click **Save file** (or **Save ZIP** for a playlist).
-6. Finished downloads appear under **History** for quick re-download while the
+   playlist links show the video count and a checklist of every video.
+3. For a playlist, check the videos you want. Nothing is checked initially; use
+   **select all** to include the whole playlist or **clear** to start over.
+4. Choose **Video** and a quality, or **Audio** and MP3/M4A.
+5. Click **Download** and follow the progress bar. Use **Cancel** to stop.
+6. When it finishes, click **Save file** (or **Save ZIP** for a playlist).
+7. Finished downloads appear under **History** for quick re-download while the
    server still has the file.
 
 Playlist URLs use the `youtube.com/playlist?list=...` form. A watch link with a
-`list=` parameter still downloads only that single video.
+`list=` parameter still downloads only that single video. Playlist downloads
+include only the checked videos; the progress count reflects that selection.
 
 ## Quick start with Docker
 
@@ -169,7 +174,7 @@ Base path: `/api`
 |---|---|---|
 | `GET` | `/health` | Status, `yt-dlp` version, ffmpeg availability |
 | `POST` | `/info` | `{url}` → video metadata + formats, or playlist metadata |
-| `POST` | `/downloads` | `{url, kind, format_id?, audio_format?, max_height?}` → `{job_id}` |
+| `POST` | `/downloads` | `{url, kind, format_id?, audio_format?, max_height?, video_ids?}` → `{job_id}` |
 | `GET` | `/downloads/{id}` | Job snapshot |
 | `GET` | `/downloads/{id}/events` | SSE progress stream |
 | `GET` | `/downloads/{id}/file` | Finished file |
@@ -184,15 +189,42 @@ Errors use one shape:
 Codes: `INVALID_URL`, `VIDEO_UNAVAILABLE`, `AGE_RESTRICTED`, `REGION_BLOCKED`,
 `TOO_LONG`, `RATE_LIMITED`, `INTERNAL`.
 
-For a playlist URL, `POST /info` returns `kind: "playlist"` with
-`video_count` and no formats. `POST /downloads` accepts an optional
-`max_height` (`2160`, `1440`, `1080`, `720`, `480`, or `360`; omit for best
-available), downloads each item, and serves one ZIP. Progress snapshots and SSE
-events include a `playlist` object:
+For a playlist URL, `POST /info` returns `kind: "playlist"`, `video_count`, and
+an `items` array describing every available video:
 
 ```json
 {
-  "total_items": 12,
+  "kind": "playlist",
+  "id": "PL1234567890",
+  "title": "Playlist title",
+  "video_count": 2,
+  "items": [
+    {
+      "id": "dQw4w9WgXcQ",
+      "title": "First video",
+      "duration": 212,
+      "thumbnail": "https://..."
+    },
+    {
+      "id": "abc123def45",
+      "title": "Second video",
+      "duration": 180,
+      "thumbnail": "https://..."
+    }
+  ]
+}
+```
+
+To download a selection, pass `video_ids` (an array of the `id` values from
+`items`) to `POST /downloads`. Omit it to download every available item. The
+optional `max_height` (`2160`, `1440`, `1080`, `720`, `480`, or `360`; omit for
+best available) applies to every selected item, and the finished files are served
+as one ZIP. Progress snapshots and SSE events include a `playlist` object whose
+`total_items` is the number of selected videos:
+
+```json
+{
+  "total_items": 7,
   "completed_items": 4,
   "current_item": 5,
   "current_title": "Lecture 05",
@@ -224,10 +256,11 @@ docker-compose.yml
 ## Notes and limitations
 
 - **Playlists:** use a `youtube.com/playlist?list=...` URL. A `watch?v=...&list=...`
-  link downloads that single video. Every available playlist item is downloaded
-  into one ZIP; item selection is not part of this implementation. Unavailable,
-  private, or over-limit items are skipped, and the job reports how many were
-  skipped. Playlists longer than `MAX_PLAYLIST_ITEMS` are rejected.
+  link downloads that single video. Check the videos you want in the playlist
+  preview, or use **select all** for the whole playlist. Only checked items are
+  bundled into the ZIP. Unavailable, private, or over-limit items are skipped,
+  and the job reports how many were skipped. Playlists longer than
+  `MAX_PLAYLIST_ITEMS` are rejected.
 - **v1 scope:** subtitle downloads, accounts, DRM, and bypassing age/region
   restrictions are intentionally out of scope. Private, age-restricted, and
   region-blocked videos return a readable error.

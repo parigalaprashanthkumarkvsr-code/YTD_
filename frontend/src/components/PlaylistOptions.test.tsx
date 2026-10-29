@@ -16,11 +16,11 @@ describe("PlaylistOptions", () => {
         onQualityChange={onQualityChange}
         audioFormat="mp3"
         onAudioFormatChange={vi.fn()}
-        videoCount={12}
+        selectedCount={12}
       />,
     );
 
-    expect(screen.getByText(/12 videos/i)).toBeInTheDocument();
+    expect(screen.getByText(/12 videos selected/i)).toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: /720p or lower/i }));
 
     expect(onQualityChange).toHaveBeenCalledWith(720);
@@ -38,7 +38,7 @@ describe("PlaylistOptions", () => {
         onQualityChange={vi.fn()}
         audioFormat="mp3"
         onAudioFormatChange={onAudioFormatChange}
-        videoCount={3}
+        selectedCount={3}
       />,
     );
 
@@ -57,7 +57,7 @@ describe("PlaylistOptions", () => {
         onQualityChange={vi.fn()}
         audioFormat="mp3"
         onAudioFormatChange={onAudioFormatChange}
-        videoCount={3}
+        selectedCount={3}
       />,
     );
 

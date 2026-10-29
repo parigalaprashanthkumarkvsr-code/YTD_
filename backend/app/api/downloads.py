@@ -19,6 +19,7 @@ async def create_download(request: Request, body: DownloadRequest) -> DownloadAc
         format_id=body.format_id,
         audio_format=body.audio_format,
         max_height=body.max_height,
+        video_ids=body.video_ids,
     )
     return DownloadAccepted(job_id=state.id)
 

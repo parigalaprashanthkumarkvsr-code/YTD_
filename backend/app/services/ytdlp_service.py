@@ -25,7 +25,7 @@ from app.core.errors import (
 )
 from app.core.files import sanitize_filename
 from app.core.validators import VIDEO_ID_RE, parse_youtube_url
-from app.schemas import FormatOption, PlaylistInfoResponse, VideoInfoResponse
+from app.schemas import FormatOption, PlaylistInfoResponse, PlaylistItem, VideoInfoResponse
 
 logger = logging.getLogger(__name__)
 
@@ -210,13 +210,23 @@ def _extract_playlist_payload_sync(url: str) -> _PlaylistPayload:
 
 def _extract_playlist_info_sync(url: str) -> PlaylistInfoResponse:
     payload = _extract_playlist_payload_sync(url)
+    items = [
+        PlaylistItem(
+            id=str(entry["id"]),
+            title=str(entry.get("title") or f"Video {index}"),
+            duration=int(entry.get("duration") or 0),
+            thumbnail=_thumbnail_of(entry),
+        )
+        for index, entry in enumerate(payload.entries, start=1)
+    ]
     return PlaylistInfoResponse(
         id=payload.id,
         title=payload.title,
         channel=payload.channel,
-        video_count=len(payload.entries),
+        video_count=len(items),
         duration=payload.duration,
         thumbnail=payload.thumbnail,
+        items=items,
     )
 
 
@@ -575,8 +585,9 @@ def run_playlist_download(
     job_dir: Path,
     progress: PlaylistProgressCallback,
     cancel_event: threading.Event,
+    video_ids: list[str] | None = None,
 ) -> Path:
-    """Download every video in a playlist into one ZIP file.
+    """Download selected videos from a playlist into one ZIP file.
 
     Individual unavailable, private, or over-limit items are skipped. If no
     items can be downloaded the job fails. Cancellation is checked between
@@ -586,17 +597,36 @@ def run_playlist_download(
         raise DownloadCancelledError
 
     payload = _extract_playlist_payload_sync(url)
-    total = len(payload.entries)
+
+    missing = 0
+    if video_ids is None:
+        entries = payload.entries
+    else:
+        wanted = set(video_ids)
+        entries = [entry for entry in payload.entries if str(entry["id"]) in wanted]
+        missing = max(0, len(wanted) - len(entries))
+        if missing:
+            logger.info("%s selected playlist items are no longer available", missing)
+
+    if not entries:
+        message = (
+            "None of the selected videos could be found in this playlist."
+            if video_ids is not None
+            else "No videos in this playlist could be downloaded."
+        )
+        raise VideoUnavailableError(message)
+
+    total = len(entries) + missing
     items_dir = job_dir / "items"
     items_dir.mkdir(parents=True, exist_ok=True)
 
     selector = _playlist_format_selector(max_height) if kind == "video" else None
     processed = 0
-    skipped = 0
+    skipped = missing
     outputs: list[tuple[Path, str]] = []
     used_names: set[str] = set()
 
-    for index, entry in enumerate(payload.entries, start=1):
+    for index, entry in enumerate(entries, start=1):
         if cancel_event.is_set():
             raise DownloadCancelledError
 
@@ -693,7 +723,12 @@ def run_playlist_download(
         )
 
     if not outputs:
-        raise VideoUnavailableError("No videos in this playlist could be downloaded.")
+        message = (
+            "No videos in this playlist could be downloaded."
+            if video_ids is None
+            else "None of the selected videos could be downloaded."
+        )
+        raise VideoUnavailableError(message)
 
     if cancel_event.is_set():
         raise DownloadCancelledError
