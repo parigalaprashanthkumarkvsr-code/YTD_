@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+coverage/
+*.local
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Downloads / runtime
+downloads/
+*.part
+*.ytdl
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

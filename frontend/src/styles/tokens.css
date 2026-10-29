@@ -1,0 +1,41 @@
+:root {
+  /* palette */
+  --tundora-300: #75696c;
+  --tundora-400: #5b4f52;
+  --tundora-500: #473d3f;
+  --tundora-600: #3a3133;
+  --sandal-200: #d9b693;
+  --sandal-300: #b99271;
+  --sandal-400: #a17858;
+  --sandal-500: #875f43;
+  --paper: #f3e9dd;
+  --success: #8fb996;
+  --error: #e5877a;
+
+  /* dark theme (default) */
+  --bg: var(--tundora-600);
+  --surface: var(--tundora-500);
+  --surface-2: var(--tundora-400);
+  --border: var(--tundora-300);
+  --text: var(--paper);
+  --text-muted: var(--sandal-200);
+  --accent: var(--sandal-200);
+  --accent-hover: var(--sandal-300);
+  --accent-press: var(--sandal-400);
+  --on-accent: var(--tundora-600);
+  --focus-ring: var(--sandal-200);
+}
+
+:root[data-theme="light"] {
+  --bg: var(--paper);
+  --surface: #ffffff;
+  --surface-2: #eadbc9;
+  --border: var(--sandal-300);
+  --text: var(--tundora-600);
+  --text-muted: var(--tundora-400);
+  --accent: var(--sandal-500);
+  --accent-hover: var(--sandal-400);
+  --accent-press: var(--tundora-500);
+  --on-accent: var(--paper);
+  --focus-ring: var(--sandal-500);
+}

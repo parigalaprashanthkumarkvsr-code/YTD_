@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="YTD — a clean, self-hosted YouTube video and audio downloader. Paste a URL, pick a format, save the file."
+    />
+    <meta name="theme-color" content="#3A3133" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>YTD_ — YouTube downloader</title>
+    <script>
+      try {
+        if (localStorage.getItem("ytd-theme") === "light") {
+          document.documentElement.dataset.theme = "light";
+        }
+      } catch (_) {
+        /* localStorage can be unavailable in private contexts */
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

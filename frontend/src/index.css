@@ -1,0 +1,88 @@
+@import "./styles/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  html {
+    background-color: var(--bg);
+  }
+
+  body {
+    @apply bg-bg font-mono text-text antialiased;
+    min-height: 100vh;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  body::before {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    content: "";
+    background: radial-gradient(
+      ellipse 900px 520px at 50% -10%,
+      color-mix(in srgb, var(--sandal-300) 9%, transparent),
+      transparent 70%
+    );
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    color: var(--on-accent);
+    background: var(--accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  ::placeholder {
+    color: var(--text-muted);
+  }
+
+  * {
+    scrollbar-color: var(--surface-2) transparent;
+  }
+}
+
+.ytd-cursor {
+  animation: ytd-blink 1.1s steps(1) infinite;
+}
+
+@keyframes ytd-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ytd-cursor {
+    animation: none;
+  }
+
+  *,
+  ::before,
+  ::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
