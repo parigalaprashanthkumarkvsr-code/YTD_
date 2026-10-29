@@ -197,7 +197,10 @@ frontend/
 │  ├─ api/client.ts          # fetch wrappers + types
 │  ├─ hooks/
 │  │  ├─ useVideoInfo.ts     # TanStack mutation → /info
-│  │  └─ useDownload.ts      # start job + EventSource progress
+│  │  ├─ useDownload.ts      # start job + EventSource progress
+│  │  ├─ useHistory.ts       # download history in localStorage
+│  │  └─ usePreferences.ts   # remembered quality choices in localStorage
+│  ├─ lib/quality.ts         # picks a format from the saved quality preference
 │  ├─ components/
 │  │  ├─ Logo.tsx            # font-based YTD_ wordmark (text, not an image)
 │  │  ├─ UrlForm.tsx
@@ -227,7 +230,10 @@ frontend/
    checkbox, select all, and clear. All items start unchecked; the download
    includes only checked items.
 4. **Options:** tabs `Video | Audio`, quality radio list with file size estimates.
-   Playlists show the selected count, a quality cap, and a ZIP notice.
+   Playlists show the selected count, a quality cap, and a ZIP notice. The last
+   playlist quality and single-video height are saved in `localStorage` and
+   restored on the next visit; a new single video reuses the closest available
+   quality at or below that preference.
 5. **Download button** → becomes a **progress bar** (percent, current item, speed,
    ETA, Cancel).
 6. **Done state:** "Save file" (or "Save ZIP") button + "Download another".

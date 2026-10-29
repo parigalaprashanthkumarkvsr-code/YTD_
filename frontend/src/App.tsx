@@ -16,33 +16,26 @@ import { UrlForm } from "./components/UrlForm";
 import { VideoCard } from "./components/VideoCard";
 import { useDownload } from "./hooks/useDownload";
 import { useHistory } from "./hooks/useHistory";
+import { usePreferences } from "./hooks/usePreferences";
 import { useVideoInfo } from "./hooks/useVideoInfo";
+import { pickDefaultFormat } from "./lib/quality";
 import { isYouTubeUrl } from "./lib/url";
-import type {
-  AudioFormat,
-  DownloadKind,
-  PlaylistQuality,
-  VideoFormat,
-} from "./types";
-
-function pickDefaultFormat(formats: VideoFormat[]): string | null {
-  const videos = formats.filter((format) => format.height !== null);
-  return (
-    videos.find((format) => format.height === 1080) ??
-    videos.find((format) => format.height === 720) ??
-    videos[0]
-  )?.format_id ?? null;
-}
+import type { AudioFormat, DownloadKind } from "./types";
 
 export default function App() {
   const infoQuery = useVideoInfo();
   const download = useDownload();
   const { entries, add: addHistory, clear: clearHistory } = useHistory();
+  const {
+    playlistQuality: quality,
+    preferredHeight,
+    setPlaylistQuality: setQuality,
+    setPreferredHeight,
+  } = usePreferences();
 
   const [kind, setKind] = useState<DownloadKind>("video");
   const [selectedFormatId, setSelectedFormatId] = useState<string | null>(null);
   const [audioFormat, setAudioFormat] = useState<AudioFormat>("mp3");
-  const [quality, setQuality] = useState<PlaylistQuality | null>(1080);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
   const [lastUrl, setLastUrl] = useState<string | null>(null);
   const [formKey, setFormKey] = useState(0);
@@ -67,16 +60,14 @@ export default function App() {
     setSelectedFormatId(null);
     setSelectedVideoIds([]);
     setKind("video");
-    setQuality(1080);
     infoQuery.mutate(url, {
       onSuccess: (data) => {
         if (data.kind === "playlist") {
           setSelectedVideoIds([]);
           setKind("video");
-          setQuality(1080);
           return;
         }
-        const preferred = pickDefaultFormat(data.formats);
+        const preferred = pickDefaultFormat(data.formats, preferredHeight);
         if (preferred) {
           setSelectedFormatId(preferred);
           setKind("video");
@@ -85,6 +76,17 @@ export default function App() {
         }
       },
     });
+  }
+
+  function handleFormatChange(formatId: string) {
+    setSelectedFormatId(formatId);
+    if (info?.kind !== "video") {
+      return;
+    }
+    const format = info.formats.find((item) => item.format_id === formatId);
+    if (format?.height !== null && format?.height !== undefined) {
+      setPreferredHeight(format.height);
+    }
   }
 
   function togglePlaylistVideo(videoId: string) {
@@ -141,7 +143,6 @@ export default function App() {
     setSelectedFormatId(null);
     setSelectedVideoIds([]);
     setKind("video");
-    setQuality(1080);
     setFormKey((value) => value + 1);
   }
 
@@ -267,7 +268,7 @@ export default function App() {
                     kind={kind}
                     onKindChange={setKind}
                     selectedFormatId={selectedFormatId}
-                    onFormatChange={setSelectedFormatId}
+                    onFormatChange={handleFormatChange}
                     audioFormat={audioFormat}
                     onAudioFormatChange={setAudioFormat}
                   />

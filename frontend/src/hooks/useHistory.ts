@@ -18,7 +18,7 @@ export interface HistoryEntry {
 
 function loadEntries(): HistoryEntry[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       return [];
     }
@@ -45,7 +45,7 @@ export function useHistory() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
     } catch {
       // Storage can be unavailable; history then lasts for this tab only.
     }
@@ -63,7 +63,7 @@ export function useHistory() {
   const clear = useCallback(() => {
     setEntries([]);
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(STORAGE_KEY);
     } catch {
       // Ignore unavailable storage.
     }

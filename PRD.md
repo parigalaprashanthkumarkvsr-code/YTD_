@@ -36,7 +36,8 @@ A web app where a user pastes a YouTube URL, previews the video details, picks a
 
 ## 5. User Stories
 1. As a user, I paste a URL so I can see the title, thumbnail, duration, and channel.
-2. As a user, I choose video quality (144p–4K where available) or audio-only.
+2. As a user, I choose video quality (144p–4K where available) or audio-only;
+   my last quality choice is remembered on this device.
 3. As a user, I see a progress bar with speed and ETA.
 4. As a user, I download the finished file with a clean filename.
 5. As a user, I can preview a playlist, choose which videos to keep, and download
@@ -58,6 +59,7 @@ A web app where a user pastes a YouTube URL, previews the video details, picks a
 | FR-10 | Playlist support (per-video selection, quality cap, ZIP output) | P2 |
 | FR-11 | Light/dark theme (both built from the Tundora + Sandal palette) | P2 |
 | FR-12 | Font-based `YTD_` wordmark logo in the header and as favicon; all UI text in monospace | P0 |
+| FR-13 | Remember the last playlist quality and single-video height in browser `localStorage` | P1 |
 
 ## 7. Non-Functional Requirements
 - **Performance:** Metadata response under 3 s (p95); UI never blocks on downloads.

@@ -20,6 +20,7 @@ Sandal palette, JetBrains Mono, and a font-based `YTD_` wordmark.
 - URL allow-list for `youtube.com`, `www.youtube.com`, `m.youtube.com`, and `youtu.be`
 - Metadata preview: title, channel, duration, thumbnail, formats
 - Video quality picker with file-size estimates; MP4 merge via ffmpeg
+- Remembers your last playlist quality and single-video quality on this device
 - Audio extraction to MP3 (192 kbps) or M4A
 - Playlist preview lists every video with its title, thumbnail, and duration
 - Per-video selection: check only the items you want, with select-all and clear
@@ -39,7 +40,8 @@ Sandal palette, JetBrains Mono, and a font-based `YTD_` wordmark.
    playlist links show the video count and a checklist of every video.
 3. For a playlist, check the videos you want. Nothing is checked initially; use
    **select all** to include the whole playlist or **clear** to start over.
-4. Choose **Video** and a quality, or **Audio** and MP3/M4A.
+4. Choose **Video** and a quality, or **Audio** and MP3/M4A. Your last quality
+   choice is remembered on this device.
 5. Click **Download** and follow the progress bar. Use **Cancel** to stop.
 6. When it finishes, click **Save file** (or **Save ZIP** for a playlist).
 7. Finished downloads appear under **History** for quick re-download while the
@@ -246,7 +248,7 @@ frontend/
   src/
     api/          # typed fetch client
     components/   # logo, URL form, preview, picker, progress, history
-    hooks/        # metadata mutation, download + EventSource, history
+    hooks/        # metadata, download + EventSource, history, preferences
     styles/       # Tundora + Sandal tokens
     lib/          # URL validation, formatting
   public/favicon.svg
@@ -270,5 +272,6 @@ docker-compose.yml
 - **Jobs are in-process.** Restarting the backend cancels active jobs; finished
   files are removed at the next startup because the download directory is
   ephemeral by design.
-- **History is browser-local.** It stores titles and job links only; files still
-  expire server-side.
+- **History and preferences are browser-local.** History stores titles and job
+  links only; files still expire server-side. The last playlist quality and
+  single-video height are saved in `localStorage` and restored on your next visit.
